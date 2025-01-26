@@ -1,0 +1,150 @@
+# Путь к базе данных
+DB_PATH = 'users.db'
+
+# Функция для создания таблицы пользователей (выполняется один раз)
+def create_table():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            balance INTEGER DEFAULT 0
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Функция для загрузки квизов
+def load_quizzes():
+    # ... (без изменений)
+
+# Функция для регистрации пользователя
+def register_user(username, password):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO users (username, password, balance) VALUES (?, ?, 10)", (username, password))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False  # Пользователь с таким именем уже существует
+    finally:
+        conn.close()
+
+# Функция для проверки авторизации
+def check_login(username, password):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+    user = cursor.fetchone()
+    conn.close()
+    return user is not None
+
+# Функция для получения баланса пользователя
+def get_balance(username):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT balance FROM users WHERE username = ?", (username,))
+    balance = cursor.fetchone()
+    conn.close()
+    return balance[0] if balance else 0
+
+# Функция для обновления баланса пользователя
+def update_balance(username, amount):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET balance = balance + ? WHERE username = ?", (amount, username))
+    conn.commit()
+    conn.close()
+
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT
+      quizzes = load_quizzes()
+      if not quizzes:
+          await update.message.reply_text('Нет доступных квизов.')
+          return
+
+      keyboard = [[InlineKeyboardButton(quiz, callback_data=f'quiz:{quiz}')] for quiz in quizzes]
+      keyboard.append([InlineKeyboardButton("Выход", callback_data='exit_game')])  # Кнопка выхода
+      reply_markup = InlineKeyboardMarkup(keyboard)
+      await update.message.reply_text('Выберите квиз:', reply_markup=reply_markup)
+      return
+
+    await update.message.reply_text("Вы хотите войти или зарегистрироваться?")
+    keyboard = [
+        [InlineKeyboardButton("Регистрация", callback_data="register")],
+        [InlineKeyboardButton("Вход", callback_data="login")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("Выберите действие:", reply_markup=reply_markup)
+
+
+async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text("Введите Ваше имя пользователя:")
+    context.user_data['registering'] = True
+    return
+
+
+async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text("Введите Ваше имя пользователя:")
+    context.user_data['logging_in'] = True
+    return
+
+
+async def handle_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  user_inputawait update.message.reply_text(f"Регистрация прошла успешно! Ваш баланс: 10 баллов.")
+      context.user_data.clear()
+      await start(update, context)
+    else:
+      await update.message.reply_text("Пользователь с такимreply_text(f"Вход выполнен успешно! Ваш баланс: {get_balance(context.user_data['username'])}")
+      context.user_data[context.user_data['username']] = True
+      context.user_data.clear()
+      await start(update, context)
+    else:
+      await update.message.reply_text("Неверный логин или пароль.")
+      context.user_data.clear()
+
+
+# ... (остальные функции без изменений, кроме добавления обработки баланса)
+
+async def show_results(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    results = context.user_data['answers']
+    correct_count = sum(1 for question, user_answer in results if user_answer == question['correct_answer'])
+    total_count = len(results)
+    username = update.effective_user.username
+    initial_balance = get_balance(username)
+    balance_change = (correct_count * 2) - total_count
+    final_balance = initial_balance + balance_change
+    update_balance(username, balance_change)
+
+    message = f"Вы ответили правильно на {correct_count} из {total_count} вопросов.\n"
+    message += f"Изменение баланса: {balance_change} баллов\n"
+    message += f"Ваш новый баланс: {final_balance} баллов\n"
+    # ... (остальной код без изменений)
+
+
+def main() -> None:
+    create_table()  # Создаем таблицу пользователей при запуске бота
+    application = ApplicationBuilder().token(API_TOKEN).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(register, pattern="register"))
+    application.add_handler(CallbackQueryHandler(login, pattern="login"))
+    application.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_username))
+    application.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_password))
+    application.add_handler(CallbackQueryHandler(quiz_selection, pattern=r'^quiz:.+'))
+    application.add_handler(CallbackQueryHandler(answer_question, pattern=r'^answer:.+'))
+    application.add_handler(CallbackQueryHandler(show_answers, pattern='show_answers'))
+    application.add_handler(CallbackQueryHandler(start, pattern='return_start'))
+    application.add_handler(CallbackQueryHandler(exit_game, pattern='exit_game'))
+
+    application.run_polling()
+
+
+if __name__ == '__main__':
+    main()

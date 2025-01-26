@@ -1,0 +1,12 @@
+API_TOKEN = '7528963854:AAGLegRWedP3Wg4Q9ny07GKksOo01ebDo70'
+структура проекта
+quiz_bot/
+│
+├── bot.py                # Основной файл бота
+├── quizzes/
+│   ├── quiz1.json        # Файл с вопросами для квиза
+│   ├── quiz2.json
+│   ├── quiz3.json
+│   └── небо.json         # Файл с вопросами для квиза
+├── requirements.txt      # Зависимости проекта
+└── README.md             # Инструкция по созданию проекта
