@@ -1,4 +1,4 @@
-API_TOKEN = '7528963854:AAGLegRWedP3Wg4Q9ny07GKksOo01ebDo70'
+
 структура проекта
 quiz_bot/
 │
