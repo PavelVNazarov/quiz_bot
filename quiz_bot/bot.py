@@ -10,7 +10,6 @@ API_TOKEN = ''
 
 
 def init_db():
-    # Удалена дублирующая функция init_db
     conn = sqlite3.connect('users.db')
     cursor = conn.cursor()
     cursor.execute('''
